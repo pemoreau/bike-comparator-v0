@@ -131,7 +131,30 @@ class FrameDB {
    */
   computeFrameList = (saddle_height, saddle_fore_aft) => {
     for (const f of this.data) {
-      const frame = new Frame(f);
+      const o = {
+        _id: f._id,
+        brand: f.brand,
+        model: f.model,
+        size: f.size,
+        year: f.year,
+        virtualSeatTube: f.virtual_seat_tube,
+        virtualTopTube: f.virtual_top_tube,
+        seatTube: f.seat_tube,
+        topTube: f.top_tube,
+        headTubeAngle: f.head_tube_angle,
+        seatTubeAngle: f.seat_tube_angle,
+        headTubeLength: f.head_tube_length,
+        chainStayLength: f.chain_stay_length,
+        frontCenter: f.front_center,
+        wheelbase: f.wheelbase,
+        bottomBracketDrop: f.bottom_bracket_drop,
+        bracketHeight: f.bracket_height,
+        stack: f.stack,
+        reach: f.reach,
+        crankLength: f.crank_length,
+        forkRate: f.fork_rate,
+      };
+      const frame = new Frame(o);
       this.frameList.push(frame);
     }
     console.log('number of bikes in frameList: ' + this.frameList.length);
@@ -147,9 +170,6 @@ class FrameDB {
     let sum_ratio_dsd_drop = 0.0;
     let sum_ratio_dsd_saddle_height = 0.0;
     for (const frame of this.frameList) {
-      // print(frame.geometrie_to_string())
-      frame.computeGeometry(saddle_height, saddle_fore_aft);
-
       sum_ratio_stack_reach += frame.ratio_stack_reach;
       if (frame.ratio_stack_reach > max_ratio_stack_reach) {
         max_ratio_stack_reach = frame.ratio_stack_reach;

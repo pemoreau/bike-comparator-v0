@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": "github/bike_comparator"
+    }
+  ],
+
+  "javascript.validate.enable": false,
+  "prettier.eslintIntegration": true,
+  "eslint.alwaysShowStatus": true,
+  "eslint.autoFixOnSave": true,
+  "editor.formatOnSave": true
+}

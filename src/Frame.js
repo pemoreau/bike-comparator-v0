@@ -1,484 +1,645 @@
-const pointDistance = function(x1, y1, x2, y2) {
-  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
-};
+// @flow
+/* eslint camelcase: ["error", {properties: "never"}] */
 
-const degreToAlpha = function(d) {
-  d = ((d % 360) + 360) % 360;
-  return (d / 360.0) * 2 * Math.PI;
-};
-
-const radianToDegre = function(r) {
-  let d = (r * 360.0) / (2 * Math.PI);
-  d = ((d % 360) + 360) % 360;
-  return d;
-};
-
-const checkEquality = function(name1, value1, name2, value2, eps = 0.03) {
-  if (Math.abs(value1 - value2) / Math.max(value1, value2) > eps) {
-    console.log(name1 + ' = ' + value1 + ' ' + name2 + ' = ' + value2);
-    return false;
-  }
-  return true;
-};
+import { pointDistance, degreToAlpha, float2 } from './Tools';
 
 /**
  * check if x is undefined (recommended way)
  */
 const isUndefined = function(x) {
-  return typeof x === 'undefined';
+  return typeof x === 'undefined' || x === null;
 };
 
-const isDefined = function(x) {
-  return !isUndefined(x);
-};
-
-const float2 = function(x) {
-  return Math.floor(x * 100) / 100;
-};
-
-const convertField = function(field) {
+const convertFieldToNumber = function(field: string): number | void {
   if (field === 'None' || isUndefined(field)) {
     return undefined;
-  } else {
-    const v = parseFloat(field);
-    if (!isNaN(v)) {
-      return v;
-    }
   }
-  return field;
+  const v = parseFloat(field);
+  if (!isNaN(v)) {
+    return v;
+  }
+
+  return undefined;
 };
 
-class Frame {
-  constructor(o) {
-    this._id = o._id;
-    this.brand = convertField(o.brand);
-    this.model = convertField(o.model);
-    this.size = convertField(o.size);
-    this.year = convertField(o.year);
-    this.virtual_seat_tube = convertField(o.virtual_seat_tube);
-    this.virtual_top_tube = convertField(o.virtual_top_tube);
-    this.seat_tube = convertField(o.seat_tube);
-    this.top_tube = convertField(o.top_tube);
-    this.head_tube_angle = convertField(o.head_tube_angle);
-    this.seat_tube_angle = convertField(o.seat_tube_angle);
-    this.head_tube_length = convertField(o.head_tube_length);
-    this.chain_stay_length = convertField(o.chain_stay_length);
-    this.front_center = convertField(o.front_center);
-    this.wheelbase = convertField(o.wheelbase);
-    this.bottom_bracket_drop = convertField(o.bottom_bracket_drop);
-    this.bracket_height = convertField(o.bracket_height);
-    this.stack = convertField(o.stack);
-    this.reach = convertField(o.reach);
-    this.crank_length = convertField(o.crank_length);
-    this.fork_rate = convertField(o.fork_rate);
+const checkEquality = function(
+  name1: string,
+  v1: number,
+  name2: string,
+  v2: number,
+  threshold: number
+): boolean {
+  return Math.abs(v1 - v2) / Math.max(v1, v2) <= threshold;
+};
 
-    // console.log(this);
-    if (isDefined(this.head_tube_angle)) {
-      this.head_tube_angle = 180.0 - this.head_tube_angle;
-    }
-    if (isDefined(this.seat_tube_angle)) {
-      this.seat_tube_angle = 180.0 - this.seat_tube_angle;
-    }
-    if (isUndefined(this.crank_length)) {
-      this.crank_length = 17.25; // 172.5mm
-    }
-
-    // extra data
-    this.wheel_circumference = 211.0;
-    this.wheel_diameter = this.wheel_circumference / Math.PI;
-    this.wheel_radius = this.wheel_diameter / 2;
-    this.stem_length = 10.0;
-    this.stem_angle = 80.0; // degres
-    this.stem_spacer = 3.5; // total heigth of spacers
-    this.stem_height = 4.5;
-    this.handlebar_diameter = 2.54;
-    // steer_tube_diameter
-
-    this.o_x = 0.0;
-    this.o_y = 0.0;
-
-    this.saddleHeight = undefined;
-    this.saddleForeAft = undefined;
+const getBracketHeightAndBottomBracketDrop = function(
+  bracketHeight: ?number,
+  bottomBracketDrop: ?number,
+  wheelRadius: number
+): { bracketHeight: number, bottomBracketDrop: number } {
+  if (
+    typeof bracketHeight === 'number' &&
+    typeof bottomBracketDrop === 'number'
+  ) {
+    return {
+      bracketHeight,
+      bottomBracketDrop,
+    };
   }
-
-  checkEquality(name1, v1, name2, v2, threshold) {
-    return Math.abs(v1 - v2) / Math.max(v1, v2) <= threshold;
+  if (typeof bracketHeight === 'number') {
+    return {
+      bracketHeight,
+      bottomBracketDrop: wheelRadius - bracketHeight,
+    };
   }
-
-  geometryToString() {
-    return (
-      '' +
-      this.brand +
-      ', ' +
-      // + this.model + ', ' +
-      +this.size +
-      ', ' +
-      // + this.year + ', ' +
-      // + this.virtual_seat_tube + ', ' +
-      // + this.virtual_top_tube + ', ' +
-      // + this.seat_tube + ', ' +
-      // + this.top_tube + ', ' +
-      // + 180.0 - this.head_tube_angle + ', ' +
-      // + 180.0 - this.seat_tube_angle + ', ' +
-      // + this.head_tube_angle + ', ' +
-      // + this.chain_stay_length + ', ' +
-      // + this.front_center + ', ' +
-      // + this.wheelbase + ', ' +
-      // + this.bottom_bracket_drop + ', ' +
-      // + this.bracket_height + ', ' +
-      // + this.stack + ', ' +
-      // + this.reach + ', ' +
-      // + this.crank_length;
-      ''
-    );
+  if (typeof bottomBracketDrop === 'number') {
+    return {
+      bracketHeight: wheelRadius - bottomBracketDrop,
+      bottomBracketDrop,
+    };
   }
+  return { bracketHeight: 0, bottomBracketDrop: 0 }; // should never occur
+};
 
-  display() {
-    console.log('%s %s size %s:', this.brand, this.model, this.size);
+const getWheelBaseAndFrontCenter = function(
+  wheelbase: ?number,
+  frontCenter: ?number,
+  forkRate: ?number,
+  chainStayLength: number,
+  bottomBracketDrop: number,
+  bracketHeight: number,
+  wheelRadius: number,
+  headTubeAngle: number,
+  forkBaseX: number,
+  forkBaseY: number,
+  rearWheelX: number
+): { wheelbase: number, frontCenter: number } {
+  // compute wheelbase: frontcenter**2 = bottomBracketDrop**2 +
+  // ( wheelbase - chainStayLength*cos(asin(bottomBracketDropChainStayLength)) )**2
+  if (typeof wheelbase === 'number' && typeof frontCenter === 'number') {
+    return { wheelbase, frontCenter };
+  }
+  if (typeof frontCenter === 'number') {
+    return {
+      wheelbase:
+        Math.sqrt(frontCenter ** 2 - bottomBracketDrop ** 2) +
+        chainStayLength *
+          Math.cos(Math.asin(bottomBracketDrop / chainStayLength)),
+      frontCenter,
+    };
+  }
+  if (typeof wheelbase === 'number') {
+    return {
+      wheelbase,
+      frontCenter: Math.sqrt(
+        bottomBracketDrop ** 2 +
+          (wheelbase -
+            chainStayLength *
+              Math.cos(Math.asin(bottomBracketDrop / chainStayLength))) **
+            2
+      ),
+    };
+  }
+  if (typeof forkRate === 'number') {
+    /*
+        Equations
+        virtualFrontWheelX = forkBaseX - l * Math.cos(degreToAlpha(headTubeAngle))
+        virtualFrontWheelY = forkBaseY - l * Math.sin(degreToAlpha(headTubeAngle))
+        virtualFrontWheelY === wheelRadius - bracketHeight
+        virtualFrontWheelX + forkRate = frontWheelX
+        */
 
-    console.log(
-      'stack/reach = %f mean = %f stack/reach normalised = %f/10.0 ',
-      float2(this.ratio_stack_reach),
-      float2(this.ratio_stack_reach_moy),
-      float2(this.ratio_stack_reach_normal)
-    );
+    const virtualFrontWheelY = wheelRadius - bracketHeight;
+    const l =
+      -(virtualFrontWheelY - forkBaseY) / Math.sin(degreToAlpha(headTubeAngle));
+    const virtualFrontWheelX =
+      forkBaseX - l * Math.cos(degreToAlpha(headTubeAngle));
+    const frontWheelX = virtualFrontWheelX + forkRate;
+    const frontWheelY = virtualFrontWheelY;
+    const wb = frontWheelX - rearWheelX;
+    return {
+      wheelbase: wb,
+      frontCenter: Math.sqrt(
+        bottomBracketDrop ** 2 +
+          (wb -
+            chainStayLength *
+              Math.cos(Math.asin(bottomBracketDrop / chainStayLength))) **
+            2
+      ),
+    };
+  }
+  return { wheelbase: 0, frontCenter: 0 }; // should never occur
+};
 
-    console.log(
-      'saddle height /ground = %f head set/ground = %f',
-      float2(this.saddle_y + this.bracket_height),
-      float2(this.stem_base_y + this.bracket_height)
-    );
+type oType = {
+  _id: string,
+  brand: string,
+  model: string,
+  size: string,
+  year: string,
+  virtualSeatTube: string,
+  virtualTopTube: string,
+  seatTube: string,
+  topTube: string,
+  headTubeAngle: string,
+  seatTubeAngle: string,
+  headTubeLength: string,
+  chainStayLength: string,
+  frontCenter: string,
+  wheelbase: string,
+  bottomBracketDrop: string,
+  bracketHeight: string,
+  stack: string,
+  reach: string,
+  crankLength: string,
+  forkRate: string,
+};
 
-    console.log('drop = %f', float2(this.drop));
+/**
+ * compute a normal form for a bike
+ */
+const computeGeometry = function(
+  o: oType
+): {
+  bracketHeight: number,
+  bottomBracketDrop: number,
+  virtualTopTube: number,
+  stemBaseX: number,
+  stemBaseY: number,
+  stack: number,
+  reach: number,
+  wheelbase: number,
+  frontCenter: number,
+  forkRate: number,
+  crankLength: number,
+} {
+  const virtualSeatTube = convertFieldToNumber(o.virtualSeatTube);
+  let virtualTopTube = convertFieldToNumber(o.virtualTopTube);
+  const seatTube = convertFieldToNumber(o.seatTube);
+  const topTube = convertFieldToNumber(o.topTube);
+  const headTubeAngle = 180.0 - parseFloat(o.headTubeAngle);
+  const seatTubeAngle = 180.0 - parseFloat(o.seatTubeAngle);
+  const headTubeLength = parseFloat(o.headTubeLength);
+  const chainStayLength = parseFloat(o.chainStayLength);
+  let frontCenter = convertFieldToNumber(o.frontCenter);
+  let wheelbase = convertFieldToNumber(o.wheelbase);
+  let bottomBracketDrop = convertFieldToNumber(o.bottomBracketDrop);
+  // console.log(
+  //   `o.bottomBracketDrop = ${
+  //     o.bottomBracketDrop
+  //   }, bottomBracketDrop = ${bottomBracketDrop}`
+  // );
+  let bracketHeight = convertFieldToNumber(o.bracketHeight);
+  let stack = convertFieldToNumber(o.stack);
+  let reach = convertFieldToNumber(o.reach);
+  const crankLength =
+    isUndefined(o.crankLength) || o.crankLength === 'None'
+      ? 17.25 /* 172.5mm */
+      : parseFloat(o.crankLength);
+  let forkRate = convertFieldToNumber(o.forkRate);
 
-    const dsd = pointDistance(
-      this.saddle_x,
-      this.saddle_y,
-      this.stem_base_x,
-      this.stem_base_y
-    );
+  // extra data
+  const wheelCircumference = 211.0;
+  const wheelDiameter = wheelCircumference / Math.PI;
+  const wheelRadius = wheelDiameter / 2;
+  const stemLength = 10.0;
+  const stemAngle = 80.0; // degres
+  const stemSpacer = 3.5; // total heigth of spacers
+  const stemHeight = 4.5;
+  const handlebarDiameter = 2.54;
 
-    console.log('distance saddle-head set = %f', float2(dsd));
+  const oX = 0.0;
+  const oY = 0.0;
 
-    console.log(
-      'wheelbase = %f fork_rate = %f',
-      float2(this.wheelbase),
-      float2(this.fork_rate)
-    );
+  // console.log(
+  //   `bracketHeight = ${bracketHeight}, bottomBracketDrop = ${bottomBracketDrop}`
+  // );
+  if (
+    typeof bracketHeight === 'number' ||
+    typeof bottomBracketDrop === 'number'
+  ) {
+    /** compute
+     * bracketHeight : wheelRadius = bracketHeight + bottomBracketDrop
+     * bottomBracketDrop
+     */
+    ({
+      bracketHeight,
+      bottomBracketDrop,
+    } = getBracketHeightAndBottomBracketDrop(
+      bracketHeight,
+      bottomBracketDrop,
+      wheelRadius
+    ));
 
-    console.log(
-      'dsd/drop = %f mean = %f dsd/drop normalised = %f/10.0 ',
-      float2(this.ratio_dsd_drop),
-      float2(this.ratio_dsd_drop_moy),
-      float2(this.ratio_dsd_drop_normal)
-    );
+    // update geometry
+    // this.bracketHeight = bracketHeight;
+    // this.bottomBracketDrop = bottomBracketDrop;
 
-    console.log(
-      'dsd/hs   = %f mean = %f dsd/hs   normalised = %f/10.0 ',
-      float2(this.ratio_dsd_saddle_height),
-      float2(this.ratio_dsd_saddle_height_moy),
-      float2(this.ratio_dsd_saddle_height_normal)
-    );
-
-    const dst = this.saddle_x - this.saddle_seat_tube_x;
-    if (dst >= 0) {
+    if (
+      !checkEquality(
+        'wheel diameter',
+        wheelDiameter,
+        'computed wheel diameter',
+        2 * (bracketHeight + bottomBracketDrop),
+        0.03
+      )
+    ) {
       console.log(
-        "creux de selle avancé de %fcm par ratio à l'axe du tube de selle",
-        float2(dst)
+        'Warning: bracketHeight and bottomBracketDrop are not compatible'
       );
-    } else {
-      console.log(
-        "creux de selle reculé de %fcm par ratio à l'axe du tube de selle",
-        float2(-dst)
-      );
-      console.log(
-        'hauteur pedalier = %f difference pedalier - axe roue = %f',
-        float2(this.bracket_height),
-        float2(this.bottom_bracket_drop)
-      );
-    }
-  }
-
-  /**
-   * compute a normal form for a bike
-   * @param saddleHeight
-   * @param saddleForeAft
-   */
-  computeGeometry(saddleHeight, saddleForeAft) {
-    this.saddleHeight = saddleHeight;
-    this.saddleForeAft = saddleForeAft;
-
-    // compute bracket_height : wheel_radius = bracket_height + bottom_bracket_drop
-    if (isDefined(this.bracket_height) && isDefined(this.bottom_bracket_drop)) {
-      if (
-        !this.checkEquality(
-          'wheel diameter',
-          this.wheel_diameter,
-          'computed wheel diameter',
-          2 * (this.bracket_height + this.bottom_bracket_drop),
-          0.03
-        )
-      ) {
-        console.log(
-          'bracket_height and bottom_bracket_drop are not compatible'
-        );
-        console.log(this);
-      }
-    } else if (isDefined(this.bracket_height)) {
-      this.bottom_bracket_drop = this.wheel_radius - this.bracket_height;
-    } else if (isDefined(this.bottom_bracket_drop)) {
-      this.bracket_height = this.wheel_radius - this.bottom_bracket_drop;
-    } else {
-      console.log('cannot compute geometry');
-      console.log('please give at least bracket_height or bottom_bracket_drop');
+      console.log(o);
     }
 
-    // here, bracket_height, bottom_bracket_drop and wheel_radius are known
+    if (typeof reach === 'number' && typeof stack === 'number') {
+      /** compute
+       * reach
+       * stack
+       * virtualTopTube
+       * stemBaseX
+       * stemBaseY
+       */
 
-    //     center of rear wheel
-    //     distance between wheel axle  - crank axle, at crank's level
-    this.rear_wheel_x =
-      this.o_x -
-      Math.sqrt(
-        this.chain_stay_length ** 2 -
-          (this.wheel_radius - this.bracket_height) ** 2
-      );
-    this.rear_wheel_y = this.wheel_radius - this.bracket_height;
-
-    // compute the position of the head set
-    if (isDefined(this.reach) && isDefined(this.stack)) {
       // case: we know reach and stack
+
       // stem base
-      this.stem_base_x = this.o_x + this.reach;
-      this.stem_base_y = this.o_y + this.stack;
+      const stemBaseX = oX + reach;
+      const stemBaseY = oY + stack;
 
       // tube horizontal base
-      this.horizontal_tube_base_x =
-        this.stem_base_x - 4.25 * Math.cos(degreToAlpha(this.head_tube_angle));
-      this.horizontal_tube_base_y =
-        this.stem_base_y - 4.25 * Math.sin(degreToAlpha(this.head_tube_angle));
+      const horizontalTubeBaseX: number =
+        stemBaseX - 4.25 * Math.cos(degreToAlpha(headTubeAngle));
+      const horizontalTubeBaseY: number =
+        stemBaseY - 4.25 * Math.sin(degreToAlpha(headTubeAngle));
 
-      // we deduce virtual_seat_tube and virtual_top_tube
-      this.virtual_heel_height =
-        (this.horizontal_tube_base_y - this.o_y) *
-        Math.sin(degreToAlpha(this.seat_tube_angle));
-      this.virtual_seat_tube_x =
-        this.o_x +
-        this.virtual_heel_height * Math.cos(degreToAlpha(this.seat_tube_angle));
-      this.virtual_seat_tube_y = this.horizontal_tube_base_y;
-      this.virtual_top_tube =
-        this.horizontal_tube_base_x - this.virtual_seat_tube_x;
+      // we deduce virtualSeatTube and virtualTopTube
+      const virtualHeelHeight =
+        (horizontalTubeBaseY - oY) * Math.sin(degreToAlpha(seatTubeAngle));
 
-      // this.stack = this.stem_base_y - this.o_y
-      // this.reach = this.stem_base_x - this.o_x
+      const virtualSeatTubeX =
+        oX + virtualHeelHeight * Math.cos(degreToAlpha(seatTubeAngle));
+      const virtualSeatTubeY = horizontalTubeBaseY;
+      virtualTopTube = horizontalTubeBaseX - virtualSeatTubeX;
+
+      // stack = stemBaseY - oY
+      // reach = stemBaseX - oX
+
+      // update geometry
+      // this.virtualTopTube = virtualTopTube;
+      // this.stemBaseX = stemBaseX;
+      // this.stemBaseY = stemBaseY;
     } else if (
-      isDefined(this.virtual_seat_tube) &&
-      isDefined(this.virtual_top_tube)
+      typeof virtualSeatTube === 'number' &&
+      typeof virtualTopTube === 'number'
     ) {
-      // case: we know virtual_seat_tube and virtual_top_tube
+      // case: we know virtualSeatTube and virtualTopTube
 
       // virtual point where the tube would be really horizontal
-      this.virtual_seat_tube_x =
-        this.o_x +
-        this.virtual_seat_tube * Math.cos(degreToAlpha(this.seat_tube_angle));
-      this.virtual_seat_tube_y =
-        this.o_y +
-        this.virtual_seat_tube * Math.sin(degreToAlpha(this.seat_tube_angle));
+      const virtualSeatTubeX =
+        oX + virtualSeatTube * Math.cos(degreToAlpha(seatTubeAngle));
+      const virtualSeatTubeY =
+        oY + virtualSeatTube * Math.sin(degreToAlpha(seatTubeAngle));
 
       //  horizontal tube base
-      this.horizontal_tube_base_x =
-        this.virtual_seat_tube_x + this.virtual_top_tube;
-      this.horizontal_tube_base_y = this.virtual_seat_tube_y;
+      const horizontalTubeBaseX = virtualSeatTubeX + virtualTopTube;
+      const horizontalTubeBaseY = virtualSeatTubeY;
 
       // stem base
-      this.stem_base_x =
-        this.horizontal_tube_base_x +
-        3.77 * Math.cos(degreToAlpha(this.head_tube_angle));
-      this.stem_base_y =
-        this.horizontal_tube_base_y +
-        3.77 * Math.sin(degreToAlpha(this.head_tube_angle));
+      const stemBaseX =
+        horizontalTubeBaseX + 3.77 * Math.cos(degreToAlpha(headTubeAngle));
+      const stemBaseY =
+        horizontalTubeBaseY + 3.77 * Math.sin(degreToAlpha(headTubeAngle));
 
       // we deduce stack and reach
-      this.stack = this.stem_base_y - this.o_y;
-      this.reach = this.stem_base_x - this.o_x;
+      stack = stemBaseY - oY;
+      reach = stemBaseX - oX;
 
-      // console.log("BTHy = %.2f stem_base_y = %.2f stack = %.2f" % (this.horizontal_tube_base_y, this.stem_base_y, this.stack))
-    } else {
-      console.log('cannot compute head set position');
-      console.log(
-        'please give reach/stack or horizontal tube length and virtual seat tube height'
-      );
-    }
+      // update geometry
+      // this.stack = stack;
+      // this.reach = reach;
+      // this.stemBaseX = stemBaseX;
+      // this.stemBaseY = stemBaseY;
 
-    // fork base
-    this.fork_base_x =
-      this.stem_base_x -
-      this.head_tube_length * Math.cos(degreToAlpha(this.head_tube_angle));
-    this.fork_base_y =
-      this.stem_base_y -
-      this.head_tube_length * Math.sin(degreToAlpha(this.head_tube_angle));
-    // compute wheelbase: front_center**2 = bottom_bracket_drop**2 + ( wheelbase - chain_stay_length*cos(asin(bottom_bracket_drop/chain_stay_length)) )**2
-    if (isDefined(this.wheelbase) && isDefined(this.front_center)) {
+      // console.log("BTHy = %.2f stemBaseY = %.2f stack = %.2f" %
+      // (horizontalTubeBaseY, stemBaseY, stack))
+
+      const rearWheelX =
+        oX -
+        Math.sqrt(chainStayLength ** 2 - (wheelRadius - bracketHeight) ** 2);
+      const rearWheelY = wheelRadius - bracketHeight;
+
+      // update geometry
+
+      // here, bracketHeight, bottomBracketDrop and wheelRadius are known
+
+      //     center of rear wheel
+      //     distance between wheel axle  - crank axle, at crank's level
+
+      // compute the position of the head set
+
+      // fork base
+      const forkBaseX =
+        stemBaseX - headTubeLength * Math.cos(degreToAlpha(headTubeAngle));
+      const forkBaseY =
+        stemBaseY - headTubeLength * Math.sin(degreToAlpha(headTubeAngle));
+
+      ({ wheelbase, frontCenter } = getWheelBaseAndFrontCenter(
+        wheelbase,
+        frontCenter,
+        forkRate,
+        chainStayLength,
+        bottomBracketDrop,
+        bracketHeight,
+        wheelRadius,
+        headTubeAngle,
+        forkBaseX,
+        forkBaseY,
+        rearWheelX
+      ));
+
+      if (wheelbase === 0 && frontCenter === 0) {
+        console.log('cannot compute geometry');
+        console.log(
+          'please give at least wheelbase, front base length or fork rate'
+        );
+      }
+
       const computedWheelbase =
-        Math.sqrt(this.front_center ** 2 - this.bottom_bracket_drop ** 2) +
-        this.chain_stay_length *
-          Math.cos(
-            Math.asin(this.bottom_bracket_drop / this.chain_stay_length)
-          );
+        Math.sqrt(frontCenter ** 2 - bottomBracketDrop ** 2) +
+        chainStayLength *
+          Math.cos(Math.asin(bottomBracketDrop / chainStayLength));
       if (
-        !this.checkEquality(
+        !checkEquality(
           'wheelbase',
-          this.wheelbase,
-          'computed_wheelbase',
+          wheelbase,
+          'computedWheelbase',
           computedWheelbase,
           0.01
         )
       ) {
         console.log('front center and wheelbase are not compatible');
       }
-    } else if (isDefined(this.front_center)) {
-      this.wheelbase =
-        Math.sqrt(this.front_center ** 2 - this.bottom_bracket_drop ** 2) +
-        this.chain_stay_length *
-          Math.cos(
-            Math.asin(this.bottom_bracket_drop / this.chain_stay_length)
-          );
-    } else if (isDefined(this.wheelbase)) {
-      this.front_center = Math.sqrt(
-        this.bottom_bracket_drop ** 2 +
-          (this.wheelbase -
-            this.chain_stay_length *
-              Math.cos(
-                Math.asin(this.bottom_bracket_drop / this.chain_stay_length)
-              )) **
-            2
-      );
-    } else if (isDefined(this.fork_rate)) {
-      /*
-            Equations
-            virtual_front_wheel_x = BFx - l * Math.cos(degre_to_alpha(head_tube_angle))
-            virtual_front_wheel_y = BFy - l * Math.sin(degre_to_alpha(head_tube_angle))
-            virtual_front_wheel_y === rr - bracket_height
-            virtual_front_wheel_x + this.fork_rate = RAVx
-            */
 
-      let virtualFrontWheelY = this.wheel_radius - this.bracket_height;
-      let l =
-        -(virtualFrontWheelY - this.fork_base_y) /
-        Math.sin(degreToAlpha(this.head_tube_angle));
-      let virtualFrontWheelX =
-        this.fork_base_x - l * Math.cos(degreToAlpha(this.head_tube_angle));
-      this.front_wheel_x = virtualFrontWheelX + this.fork_rate;
-      this.front_wheel_y = virtualFrontWheelY;
-      this.wheelbase = this.front_wheel_x - this.rear_wheel_x;
-      this.front_center = Math.sqrt(
-        this.bottom_bracket_drop ** 2 +
-          (this.wheelbase -
-            this.chain_stay_length *
-              Math.cos(
-                Math.asin(this.bottom_bracket_drop / this.chain_stay_length)
-              )) **
-            2
-      );
+      // update geometry
+      // this.wheelbase = wheelbase;
+      // this.frontcenter = frontCenter;
+
+      // centre roue avant
+      // distance axe roue - axe pédalier au niveau du pedalier
+      const frontWheelX =
+        oX + Math.sqrt(frontCenter ** 2 - (wheelRadius - bracketHeight) ** 2);
+      const frontWheelY = wheelRadius - bracketHeight;
+
+      // console.log("axe roue arriere = (%.2f, %.2f) axe roue avant = (%.2f, %.2f)" %
+      // (rearWheelX, rearWheelY, frontWheelX, frontWheelY))
+
+      if (typeof forkRate !== 'number') {
+        // virtualFrontWheel
+        // equation: frontWheelY = forkBaseY - l * Math.sin(degreToAlpha(headTubeAngle))
+        const l =
+          -(frontWheelY - forkBaseY) / Math.sin(degreToAlpha(headTubeAngle));
+        const virtualFrontWheelX =
+          forkBaseX - l * Math.cos(degreToAlpha(headTubeAngle));
+        forkRate = frontWheelX - virtualFrontWheelX;
+        // update geometry
+        // this.forkRate = forkRate;
+      }
+
+      if (typeof seatTube === 'number') {
+        // tube de selle - jusqu'au tube horizontal (peut etre slooping)
+        const seatTubeX = oX + seatTube * Math.cos(degreToAlpha(seatTubeAngle));
+        const seatTubeY = oY + seatTube * Math.sin(degreToAlpha(seatTubeAngle));
+      } else {
+        const seatTubeX = undefined;
+        const seatTubeY = undefined;
+      }
+
+      // down tube base
+      const downTubeX =
+        forkBaseX + 4.25 * Math.cos(degreToAlpha(headTubeAngle));
+      const downTubeY =
+        forkBaseY + 4.25 * Math.sin(degreToAlpha(headTubeAngle));
+
+      // pedal axle
+      const alpha = 0.0;
+      const pedalX = oX + crankLength * Math.cos(alpha);
+      const pedalY = oY + crankLength * Math.sin(alpha);
+
+      return {
+        bracketHeight,
+        bottomBracketDrop,
+        virtualTopTube,
+        stemBaseX,
+        stemBaseY,
+        stack,
+        reach,
+        wheelbase,
+        frontCenter,
+        forkRate,
+        crankLength,
+      };
     } else {
-      console.log('cannot compute geometry');
+      console.log('cannot compute head set position');
       console.log(
-        'please give at least wheelbase, front base length or fork rate'
+        'please give reach/stack or horizontal tube length and virtual seat tube height'
       );
-      console.log(this.geometryToString());
     }
+  } else {
+    // bracketHeight && bottomBracketDrop are not defined
+    console.log('cannot compute geometry');
+    console.log('please give at least bracketHeight or bottomBracketDrop');
+    // this.bracketHeight = 0;
+  }
+  return {
+    bracketHeight: 0.0,
+    bottomBracketDrop: 0.0,
+    virtualTopTube: 0.0,
+    stemBaseX: 0.0,
+    stemBaseY: 0.0,
+    stack: 0.0,
+    reach: 0.0,
+    wheelbase: 0.0,
+    frontCenter: 0.0,
+    forkRate: 0.0,
+    crankLength: 0.0,
+  };
+};
 
-    // centre roue avant
-    // distance axe roue - axe pédalier au niveau du pedalier
-    this.front_wheel_x =
-      this.o_x +
-      Math.sqrt(
-        this.front_center ** 2 - (this.wheel_radius - this.bracket_height) ** 2
-      );
-    this.front_wheel_y = this.wheel_radius - this.bracket_height;
+class Frame {
+  _id: string;
 
-    // console.log("axe roue arriere = (%.2f, %.2f) axe roue avant = (%.2f, %.2f)" % (this.rear_wheel_x, this.rear_wheel_y, this.front_wheel_x, this.front_wheel_y))
+  brand: string;
 
-    if (isUndefined(this.fork_rate)) {
-      // virtual_front_wheel
-      // equation: this.front_wheel_y = this.fork_base_y - l * Math.sin(degre_to_alpha(this.head_tube_angle))
-      let l =
-        -(this.front_wheel_y - this.fork_base_y) /
-        Math.sin(degreToAlpha(this.head_tube_angle));
-      let virtualFrontWheelX =
-        this.fork_base_x - l * Math.cos(degreToAlpha(this.head_tube_angle));
-      this.fork_rate = this.front_wheel_x - virtualFrontWheelX;
-    }
+  model: string;
 
-    if (isDefined(this.seat_tube)) {
-      // tube de selle - jusqu'au tube horizontal (peut etre slooping)
-      this.seat_tube_x =
-        this.o_x +
-        this.seat_tube * Math.cos(degreToAlpha(this.seat_tube_angle));
-      this.seat_tube_y =
-        this.o_y +
-        this.seat_tube * Math.sin(degreToAlpha(this.seat_tube_angle));
-    } else {
-      this.seat_tube_x = undefined;
-      this.seat_tube_y = undefined;
-    }
+  size: string;
 
-    // down tube base
-    this.down_tube_x =
-      this.fork_base_x + 4.25 * Math.cos(degreToAlpha(this.head_tube_angle));
-    this.down_tube_y =
-      this.fork_base_y + 4.25 * Math.sin(degreToAlpha(this.head_tube_angle));
+  year: ?number;
 
-    // saddle
-    this.saddle_x = this.o_x - this.saddleForeAft;
-    this.saddle_y =
-      this.o_y +
-      this.saddleHeight * Math.sin(degreToAlpha(this.seat_tube_angle));
-    this.saddle_seat_tube_x =
-      this.o_x +
-      this.saddleHeight * Math.cos(degreToAlpha(this.seat_tube_angle)); // abscisse du tube de selle au niveau de la selle
+  virtualSeatTube: number;
 
-    // difference saddle - stem base
-    this.drop = this.saddle_y - this.stem_base_y;
+  virtualTopTube: number;
 
-    // pedal axle
-    let alpha = 0.0;
-    this.pedal_x = this.o_x + this.crank_length * Math.cos(alpha);
-    this.pedal_y = this.o_y + this.crank_length * Math.sin(alpha);
+  seatTube: number;
 
-    // calcul d'indicateurs
-    this.saddle_stem_distance = pointDistance(
-      this.saddle_x,
-      this.saddle_y,
-      this.stem_base_x,
-      this.stem_base_y
-    );
-    this.ratio_saddle_stem_distance_drop =
-      this.saddle_stem_distance / this.drop;
-    this.ratio_saddle_stem_distance_saddle_height =
-      this.saddle_stem_distance / this.saddleHeight;
-    this.ratio_stack_reach = this.stack / this.reach;
+  topTube: number;
+
+  headTubeAngle: number;
+
+  seatTubeAngle: number;
+
+  headTubeLength: number;
+
+  chainStayLength: number;
+
+  frontCenter: number;
+
+  wheelbase: number;
+
+  bottomBracketDrop: number;
+
+  bracketHeight: number;
+
+  stack: number;
+
+  reach: number;
+
+  crankLength: number;
+
+  forkRate: number;
+
+  wheelCircumference: number;
+
+  wheelDiameter: number;
+
+  wheelRadius: number;
+
+  stemLength: number;
+
+  stemAngle: number;
+
+  stemSpacer: number;
+
+  stemHeight: number;
+
+  handlebarDiameter: number;
+
+  oX: number;
+
+  oY: number;
+
+  // set by computeGeometry
+  // rearWheelX: number;
+  stemBaseX: number;
+
+  stemBaseY: number;
+
+  saddleX: number;
+
+  saddleY: number;
+
+  saddleSeatTubeX: number;
+
+  drop: number;
+
+  saddleStemDistance: number;
+
+  constructor(o: oType) {
+    // console.log(`constructor o = ${o}`);
+    // console.log(o);
+    const g = computeGeometry(o);
+    // console.log(`g.bottomBracketDrop = ${g.bottomBracketDrop}`);
+
+    this._id = o._id;
+    this.brand = o.brand;
+    this.model = o.model;
+    this.size = o.size;
+    this.year = convertFieldToNumber(o.year);
+
+    this.headTubeAngle = parseFloat(o.headTubeAngle);
+    this.seatTubeAngle = parseFloat(o.seatTubeAngle);
+    this.headTubeLength = parseFloat(o.headTubeLength);
+    this.chainStayLength = parseFloat(o.chainStayLength);
+
+    this.bottomBracketDrop = g.bottomBracketDrop;
+    this.bracketHeight = g.bracketHeight;
+    this.virtualTopTube = g.virtualTopTube;
+    this.stemBaseX = g.stemBaseX;
+    this.stemBaseY = g.stemBaseY;
+    this.stack = g.stack;
+    this.reach = g.reach;
+    this.wheelbase = g.wheelbase;
+    this.frontCenter = g.frontCenter;
+    this.forkRate = g.forkRate;
+    this.crankLength = g.crankLength;
+
+    // // extra data
+    // this.wheelCircumference = 211.0;
+    // this.wheelDiameter = this.wheelcircumference / Math.PI;
+    // this.wheelRadius = this.wheelDiameter / 2;
+    // this.stemLength = 10.0;
+    // this.stemAngle = 80.0; // degres
+    // this.stemSpacer = 3.5; // total heigth of spacers
+    // this.stemHeight = 4.5;
+    // this.handlebarDiameter = 2.54;
+
+    // this.oX = 0.0;
+    // this.oY = 0.0;
   }
 
-  distance(other, dsd = '', drop = '', ratioDsdDrop = '', deport = undefined) {
+  /**
+   *
+   */
+  getSaddleAndDrop(
+    saddleHeight: number,
+    saddleForeAft: number
+  ): { saddleX: number, saddleY: number, drop: number } {
+    const { oX, oY, seatTubeAngle, stemBaseY } = this;
+    // saddle
+    const saddleX = oX - saddleForeAft;
+    const saddleY = oY + saddleHeight * Math.sin(degreToAlpha(seatTubeAngle));
+    // abscisse du tube de selle au niveau de la selle
+
+    const saddleSeatTubeX =
+      oX + saddleHeight * Math.cos(degreToAlpha(seatTubeAngle));
+
+    // difference saddle - stem base
+    const drop = saddleY - stemBaseY;
+    return { saddleX, saddleY, drop };
+  }
+
+  /**
+   *
+   * @param {*} other
+   * @param {*} dsd
+   * @param {*} drop
+   * @param {*} ratioDsdDrop
+   * @param {*} deport
+   */
+  distance(
+    other: Frame,
+    dsd: string = '',
+    drop: string = '',
+    ratioDsdDrop: string = '',
+    deport: ?number = undefined
+  ): number {
     let res = 0.0;
     const dsd1 = pointDistance(
-      this.saddle_x,
-      this.saddle_y,
-      this.stem_base_x,
-      this.stem_base_y
+      this.saddleX,
+      this.saddleY,
+      this.stemBaseX,
+      this.stemBaseY
     );
     const dsd2 = pointDistance(
-      other.saddle_x,
-      other.saddle_y,
-      other.stem_base_x,
-      other.stem_base_y
+      other.saddleX,
+      other.saddleY,
+      other.stemBaseX,
+      other.stemBaseY
     );
 
     const deltaDsd = dsd2 - dsd1;
     const deltaDrop = other.drop - this.drop;
     const deltaRatioDsdDrop = dsd2 / other.drop - dsd1 / this.drop;
-    const deltaDeport = other.fork_rate - this.fork_rate;
+    const deltaDeport = other.forkRate - this.forkRate;
 
     const args = [dsd, drop, ratioDsdDrop, deport];
     const deltas = [deltaDsd, deltaDrop, deltaRatioDsdDrop, deltaDeport];
@@ -513,6 +674,117 @@ class Frame {
     }
     // return Math.sqrt(res);
     return res;
+  }
+
+  /**
+   *
+   */
+  geometryToString() {
+    return `${this.brand}, ${this.size}, `;
+  }
+
+  /**
+   * compute indocators
+   */
+  computeIndicator(saddleHeight: number) {
+    const {
+      saddleX,
+      saddleY,
+      stemBaseX,
+      stemBaseY,
+      // saddleStemDistance,
+      drop,
+      // saddleHeight,
+      stack,
+      reach,
+    } = this;
+
+    const ratioStackReach = stack / reach;
+    const saddleStemDistance = pointDistance(
+      saddleX,
+      saddleY,
+      stemBaseX,
+      stemBaseY
+    );
+
+    return { ratioStackReach };
+  }
+
+  /**
+   *
+   */
+  display(saddleHeight: number) {
+    // calcul d'indicateurs
+    const { ratioStackReach } = this.computeIndicator(saddleHeight);
+
+    // const ratioSaddleStemDistanceDrop = saddleStemDistance / drop;
+    // const ratioSaddleStemDistanceSaddleHeight =
+    //   saddleStemDistance / saddleHeight;
+    // const ratioStackReach = stack / reach;
+
+    // console.log('%s %s size %s:', this.brand, this.model, this.size);
+
+    // console.log(
+    //   'stack/reach = %f mean = %f stack/reach normalised = %f/10.0 ',
+    //   float2(ratioStackReach),
+    //   float2(ratioStackReachMoy),
+    //   float2(ratioStackReachNormal)
+    // );
+
+    // console.log(
+    //   'saddle height /ground = %f head set/ground = %f',
+    //   float2(this.saddleY + this.bracketHeight),
+    //   float2(this.stemBaseY + this.bracketHeight)
+    // );
+
+    // console.log('drop = %f', float2(this.drop));
+
+    // const dsd = pointDistance(
+    //   this.saddleX,
+    //   this.saddleY,
+    //   this.stemBaseX,
+    //   this.stemBaseY
+    // );
+
+    // console.log('distance saddle-head set = %f', float2(dsd));
+
+    // console.log(
+    //   'wheelbase = %f forkRate = %f',
+    //   float2(this.wheelbase),
+    //   float2(this.forkRate)
+    // );
+
+    // console.log(
+    //   'dsd/drop = %f mean = %f dsd/drop normalised = %f/10.0 ',
+    //   float2(this.ratioDsdDrop),
+    //   float2(this.ratioDsdDropMoy),
+    //   float2(this.ratioDsdDropNormal)
+    // );
+
+    // console.log(
+    //   'dsd/hs   = %f mean = %f dsd/hs   normalised = %f/10.0 ',
+    //   float2(this.ratioDsdSaddleHeight),
+    //   float2(this.ratioDsdSaddleHeightMoy),
+    //   float2(this.ratioDsdSaddleHeightNormal)
+    // );
+
+    // const dst = this.saddleX - this.saddleSeatTubeX;
+    // if (dst >= 0) {
+    //   console.log(
+    //     "creux de selle avancé de %fcm par ratio à l'axe du tube de selle",
+    //     float2(dst)
+    //   );
+    // } else {
+    //   console.log(
+    //     "creux de selle reculé de %fcm par ratio à l'axe du tube de selle",
+    //     float2(-dst)
+    //   );
+    //   console.log(
+    //     'hauteur pedalier = %f difference pedalier - axe roue = %f',
+    //     float2(this.bracketHeight),
+    //     float2(this.bottomBracketDrop)
+    //   );
+    // }
   }
 }
 

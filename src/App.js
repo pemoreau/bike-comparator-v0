@@ -4,7 +4,7 @@ import Bike from './Bike';
 import FrameDB from './FrameDB';
 
 class App extends Component {
-  constructor (props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -16,19 +16,19 @@ class App extends Component {
       selectedModel: null,
       selectedSize: null,
       selectedYear: null,
-      selectedBike: null
+      selectedBike: null,
     };
 
     this.componentDidMount = this.componentDidMount.bind(this);
   }
 
-  componentDidMount () {
+  componentDidMount() {
     this.setState({ isLoading: true });
     this.state.frameDB.populate();
     this.setState({ isLoading: false });
   }
 
-  render () {
+  render() {
     const {
       frameDB,
       selectedBrand,
@@ -36,10 +36,10 @@ class App extends Component {
       selectedSize,
       selectedYear,
       selectedBike,
-      sortedFrames
+      sortedFrames,
     } = this.state;
     return (
-      <div className='container'>
+      <div className="container">
         <header>
           <h1>Welcome to Bike Comparator!</h1>
         </header>
@@ -47,7 +47,7 @@ class App extends Component {
 
         <h3>Select your bike</h3>
         <DownshiftBike
-          field='brand'
+          field="brand"
           getItems={() => frameDB.getBrands()}
           getSelected={() => selectedBrand}
           setSelected={item =>
@@ -55,12 +55,12 @@ class App extends Component {
               selectedBrand: item,
               selectedModel: undefined,
               selectedSize: undefined,
-              selectedYear: undefined
+              selectedYear: undefined,
             })
           }
         />
         <DownshiftBike
-          field={'model'}
+          field="model"
           getItems={() =>
             selectedBrand ? frameDB.getModels(selectedBrand) : []
           }
@@ -69,12 +69,12 @@ class App extends Component {
             this.setState({
               selectedModel: item,
               selectedSize: undefined,
-              selectedYear: undefined
+              selectedYear: undefined,
             })
           }
         />
         <DownshiftBike
-          field={'size'}
+          field="size"
           getItems={() =>
             selectedBrand && selectedModel
               ? frameDB.getSizes(selectedBrand, selectedModel)
@@ -83,13 +83,13 @@ class App extends Component {
           setSelected={item =>
             this.setState({
               selectedSize: item,
-              selectedYear: undefined
+              selectedYear: undefined,
             })
           }
           getSelected={() => selectedSize}
         />
         <DownshiftBike
-          field={'year'}
+          field="year"
           getItems={() =>
             selectedBrand && selectedModel && selectedSize
               ? frameDB.getYears(selectedBrand, selectedModel, selectedSize)
@@ -116,14 +116,14 @@ class App extends Component {
             const bestBikes = frameDB.getSortedFrames(bike, 10);
             // normalize distance
 
-            let distances = bestBikes.map(p => p.distance);
-            console.log('distances: ' + distances);
+            const distances = bestBikes.map(p => p.distance);
+            console.log(`distances: ${distances}`);
 
             const maxDistance = Math.max(...bestBikes.map(p => p.distance));
-            console.log('max = ' + maxDistance);
+            console.log(`max = ${maxDistance}`);
 
             for (const p of bestBikes) {
-              p.distance = p.distance / (maxDistance === 0 ? 1 : maxDistance);
+              p.distance /= maxDistance === 0 ? 1 : maxDistance;
             }
 
             console.log(bestBikes);
@@ -135,7 +135,7 @@ class App extends Component {
             console.log(bestBikes);
             this.setState({
               selectedBike: bike,
-              sortedFrames: bestBikes
+              sortedFrames: bestBikes,
             });
           }}
         >

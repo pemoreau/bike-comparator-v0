@@ -1,6 +1,12 @@
-import React from 'react';
+// @flow
+import * as React from 'react';
 
-const Bike = ({ bike: { brand, model, size, year }, distance }) => (
+type Props = {
+  bike: { brand: string, model: string, size: string | number, year: number },
+  distance: number,
+};
+
+const Bike = ({ bike: { brand, model, size, year }, distance }: Props) => (
   <li>
     {brand} {model} Size {size} {year ? ' (' + year + ')' : ''}{' '}
     {(distance || distance === 0) &&
