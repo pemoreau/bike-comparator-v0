@@ -16,7 +16,7 @@ module.exports = {
     'react/jsx-filename-extension': [1, { extensions: ['.js', '.jsx'] }],
     'react/button-has-type': 0,
     'no-underscore-dangle': ['error', { allowAfterThis: true, enforceInMethodNames: true }],
-    no-console: 0,
+    'no-console': 0,
     
   },
   // plugins: ['prettier'], // activating esling-plugin-prettier (--fix stuff)

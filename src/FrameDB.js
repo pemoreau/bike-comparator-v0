@@ -1,3 +1,5 @@
+// @flow
+
 import Frame from './Frame';
 
 class FrameDB {
@@ -16,8 +18,8 @@ class FrameDB {
   // }
 
   // use class property feature
-  data = [];
-  frameList = [];
+  data: Array<Object> = [];
+  frameList: Array<Frame> = [];
   tree = {};
   // tree has the following form:
   // tree: {
@@ -94,19 +96,28 @@ class FrameDB {
    * list of brands, models, sizes, years or id
    * @returns {string[]}
    */
-  getBrands = () => {
+  getBrands = (): Array<string> => {
     return Object.keys(this.tree);
   };
-  getModels = selectedBrand => {
+  getModels = (selectedBrand: string): Array<string> => {
     return Object.keys(this.tree[selectedBrand]);
   };
-  getSizes = (selectedBrand, selectedModel) => {
+  getSizes = (selectedBrand: string, selectedModel: string): Array<string> => {
     return Object.keys(this.tree[selectedBrand][selectedModel]);
   };
-  getYears = (selectedBrand, selectedModel, selectedSize) => {
+  getYears = (
+    selectedBrand: string,
+    selectedModel: string,
+    selectedSize: string
+  ): Array<string> => {
     return Object.keys(this.tree[selectedBrand][selectedModel][selectedSize]);
   };
-  getId = (selectedBrand, selectedModel, selectedSize, selectedYear) => {
+  getId = (
+    selectedBrand: string,
+    selectedModel: string,
+    selectedSize: string,
+    selectedYear: string
+  ): Array<string> => {
     return this.tree[selectedBrand][selectedModel][selectedSize][selectedYear];
   };
 
@@ -114,7 +125,12 @@ class FrameDB {
    * given selected brand, model, size and year
    * return corresponding Frame object of  frameList
    */
-  getFrame = (selectedBrand, selectedModel, selectedSize, selectedYear) => {
+  getFrame = (
+    selectedBrand: string,
+    selectedModel: string,
+    selectedSize: string,
+    selectedYear: string
+  ): Array<Frame> => {
     const selectedId = this.getId(
       selectedBrand,
       selectedModel,
@@ -129,7 +145,7 @@ class FrameDB {
    * for a given saddle_height and saddle_fore_aft
    * compute once the geometry of each frame of the database
    */
-  computeFrameList = (saddle_height, saddle_fore_aft) => {
+  computeFrameList = (saddle_height: number, saddle_fore_aft: number): void => {
     for (const f of this.data) {
       const o = {
         _id: f._id,
@@ -223,13 +239,13 @@ class FrameDB {
    * @returns {Array}
    */
   getSortedFrames(
-    frame,
-    dsd = '',
-    drop = '-',
-    ratio_dsd_drop = '',
-    fork_rate = undefined,
-    n = 10
-  ) {
+    frame: Frame,
+    dsd: string = '',
+    drop: string = '-',
+    ratio_dsd_drop: string = '',
+    fork_rate: ?number = undefined,
+    n: number = 10
+  ): Array<{ frame: Frame, distance: number }> {
     const l = [];
     for (const f of this.frameList) {
       l.push({
@@ -237,10 +253,13 @@ class FrameDB {
         distance: frame.distance(f, dsd, drop, ratio_dsd_drop, fork_rate),
       });
     }
-
+    // console.log('getSortedFrames');
+    // console.log(l);
     l.sort(function(pair1, pair2) {
       return pair1.distance - pair2.distance;
     });
+    // console.log(l);
+
     return l.slice(0, n);
   }
 }

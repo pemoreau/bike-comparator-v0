@@ -112,7 +112,8 @@ class App extends Component {
               selectedYear
             );
 
-            // bestBike is a list of {frame,distance}
+            // bike is a list of {frame,distance}
+            // {frame:Frame, distance:number}
             const bestBikes = frameDB.getSortedFrames(bike, 10);
             // normalize distance
 

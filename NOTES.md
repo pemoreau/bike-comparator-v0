@@ -1,3 +1,4 @@
+```
 npx create-react-app bike_comparator
 
 npm install mongodb
@@ -7,7 +8,7 @@ node server
 npm start
 
 deploy to heroku using 'App connected to GitHub'
-
+```
 ### Heroku
 
 heroku config:set MONGO_URL=mongodb://username:password@ds227481.mlab.com:27481/frames

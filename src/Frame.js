@@ -643,6 +643,9 @@ class Frame {
 
     const args = [dsd, drop, ratioDsdDrop, deport];
     const deltas = [deltaDsd, deltaDrop, deltaRatioDsdDrop, deltaDeport];
+    console.log('distance this = ');
+    console.log(this);
+    console.log(`distance deltas = ${deltas}`);
 
     const max = 1000.0;
     const cst = 100;
@@ -673,6 +676,8 @@ class Frame {
       }
     }
     // return Math.sqrt(res);
+    console.log(`distance res = ${res}`);
+
     return res;
   }
 
